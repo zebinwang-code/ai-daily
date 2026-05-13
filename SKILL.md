@@ -188,13 +188,25 @@ curl -sL \
 
 ---
 
+### 受众定位：以普通人为主
+
+**核心设定：** 读者中 80% 是对 AI 感兴趣但不是从业者的普通人——上班族、学生、创业者、好奇心驱动的消费者。选题和写法都以他们为第一优先级，专业读者次之。
+
+判断标准：**一个不做 AI 的人看完，能知道这件事跟自己有没有关系吗？**
+
+实操规则：
+- 优先选「影响普通人用什么工具 / 花多少钱 / 怎么生活工作」的故事，而不是「哪家公司发了什么论文 / 融了多少钱」
+- 写法：能用「你」开头的就用「你」，能用生活场景类比的就用，不用术语能说清楚就不用术语
+- 技术细节可以一句带过，但落脚点必须是「对你意味着什么」
+- 融资/估值新闻：只有当它直接影响用户体验（降价/新功能/关停）时才上；纯资本数字不值得占一个位置
+
 ### 故事三问过滤（每条都必须过）
 
 候选池里的每条新闻，都要回答这三个问题，有一个答不上来就淘汰：
 
-1. **读者拿到这条信息，能做什么或思考什么？** — 纯财务数字（估值/融资/市值）如果没有落脚点（"这意味着什么"），直接淘汰；纯公告没有影响分析，淘汰
+1. **普通人拿到这条信息，能做什么或感受到什么变化？** — 纯财务数字（估值/融资/市值）如果没有落脚点（"这意味着什么"），直接淘汰；纯公告没有影响分析，淘汰
 2. **为什么是今天，而不是任何一天都能发？** — 如果抽掉日期这条消息也能发，淘汰
-3. **这是从业者或使用者视角有意义的信息，还是只是数字/报道？** — 行业围观新闻（「X 在 Y 地开会」）淘汰
+3. **不做 AI 的人看完会觉得跟自己有关，还是只是行业内部消息？** — 行业围观新闻（「X 在 Y 地开会」「某公司发布研究报告」）淘汰
 
 从候选池最终选出：
 - **故事 3-5 条**：今天最不能错过的事，覆盖至少 2 类（模型/产品/行业）
@@ -452,40 +464,104 @@ archive.py 会：
 
 ## S5：配图生成（ChatGPT CDP）
 
-每次日报生成两张竖版图（9:16），存入当日结果目录：
-- `img_daily.png` — 今日 AI 资讯信息图，结合当日内容
-- `img_reflection.png` — 「日有所思」心得卡片，**内容需要暂停等用户输入**
+每次日报生成 **4 张竖版图（9:16）**，存入当日结果目录：
 
-### 流程
+| 文件名 | 内容 | 来源 |
+|--------|------|------|
+| `img_cover.png` | 今日主题艺术图，标题「MMDD AI观察」 | 用户提供灵感方向 / 无则从日报热点提炼 |
+| `img_card1.png` | 今日最重要变化 · 解说卡 1 | 自动从日报提炼，普通人视角 |
+| `img_card2.png` | 今日最重要变化 · 解说卡 2 | 同上 |
+| `img_reflection.png` | 日有所思心得卡 | 用户提供文字 / 无则 Claude 撰写 |
+
+### 开始前：收集用户输入
+
+生成前先问：
+
+> 「封面图有没有想要的画面方向或关键词？（没有我从日报热点提炼）」  
+> 「今日有所思有没有想说的话？（没有我来写）」
+
+两个问题都是可选的，用户跳过就用自动生成逻辑。
+
+---
+
+### 图 1 — 封面图（`img_cover.png`）
+
+**方向来源：** 用户提供 → 直接用；未提供 → 从日报 hot_score 最高的故事提炼一个视觉主题词（如「速度」「法律+AI」「小模型崛起」）。
+
+提示词模板：
+```
+{{VISUAL_DIRECTION}}, artistic digital illustration, vertical 9:16 poster,
+cinematic lighting, rich color palette, dreamlike but grounded atmosphere,
+Chinese text overlay in bold modern font: top-left corner small label「AI观察」,
+large centered date「MMDD」, bottom area subtle tagline「{{TODAY_ONE_LINER}}」.
+No UI elements, no infographic grids. Pure visual storytelling.
+```
+
+---
+
+### 图 2 & 3 — 内容解说卡（`img_card1.png` / `img_card2.png`）
+
+从日报中选今天**最影响普通人**的两件事，各做一张解说卡。
+
+**选卡原则：** 选那些「不做 AI 的人也能感受到变化」的事，不选纯研究/融资新闻。
+
+**每张卡的信息结构：**
+```
+顶部小标签：今天发生了什么
+主标题：[用一句普通人能懂的话描述这件事，≤20字]
+  例：「你的 Word 里即将出现一个 AI 律师」
+  例：「AI 回复速度要翻倍了」
+副标题/说明：[1-2句，解释为什么你要关心，完全不用术语]
+底部小字：来源标注（Anthropic / OpenAI / 某公司）
+```
+
+提示词模板：
+```
+Minimalist Chinese info card, vertical 9:16, clean editorial design.
+Soft gradient background (pick one: warm amber-cream / cool slate-mint / dusty rose-lavender).
+Layout top to bottom:
+  - small category tag at top:「今天发生了什么」(light, small)
+  - large bold Chinese headline centered:「{{HEADLINE}}」(2 lines max)
+  - medium body text below:「{{EXPLANATION}}」(2-3 lines, friendly tone)
+  - small source tag at bottom:「{{SOURCE}}」
+Generous white space, no photos, no complex icons, newspaper-editorial feel.
+```
+
+---
+
+### 图 4 — 日有所思（`img_reflection.png`）
+
+**文字来源：** 用户提供 → 直接排版；未提供 → Claude 根据今日灵感一闪写 2-4 句，口语化，有具体触发点，不写格言。
+
+提示词模板：
+```
+A minimalist vertical card 9:16, calm and introspective aesthetic.
+Soft warm gradient background (cream-ivory to light sage green), subtle paper texture.
+Chinese typography layout:
+  - top: small label「日有所思」(elegant, understated)
+  - center: main reflection text「{{REFLECTION_TEXT}}」
+    (natural line breaks, 3-5 lines, feels handwritten in spirit)
+  - bottom: light date stamp「{{DATE}}」
+No decorative elements beyond typography. Muted warm tones. Quiet and grounding.
+```
+
+---
+
+### CDP 操作流程
 
 ```bash
-# 1. 打开 ChatGPT，进入图片生成模式
+# 进入 ChatGPT 图片生成模式（每次复用同一个 tab，4 张图顺序生成）
 TARGET=$(curl -s "http://localhost:3456/new?url=https://chatgpt.com" \
   | python3 -c "import sys,json; print(json.load(sys.stdin)['targetId'])")
 sleep 3
 
-# 2. 点击「生成图片」入口按钮（UI 位于左侧边栏或工具栏）
+# 点击进入图片生成模式
 curl -s -X POST "http://localhost:3456/eval?target=$TARGET" \
   -H "Content-Type: text/plain" \
-  -d 'document.querySelector("[data-testid=\"gizmo-selector-button-dalle\"]")?.click() || document.querySelector("button[aria-label*=\"图\"]")?.click()'
+  -d 'document.querySelector("[data-testid=\"gizmo-selector-button-dalle\"]")?.click()'
 sleep 2
-```
 
-**Image 1 — 资讯信息图**
-
-提示词模板（将 `{{TITLE}}` `{{EVENTS}}` 替换为当日实际内容）：
-
-```
-modern flat infographic, minimalist, vertical poster 9:16, soft pastel gradient background
-(blue-purple-peach), tech newsletter style, futuristic, abstract icons and circular motifs,
-floating shapes, semi-transparent layers, smooth gradients, clean hierarchical layout,
-bold Chinese headline, light shadows and highlights, thematic symbols placeholder.
-Include text: main title「AI 圈 · MM月DD日」, subtitle「{{TITLE}}」,
-3 content cards: {{EVENT1}} / {{EVENT2}} / {{EVENT3}}
-```
-
-```bash
-# 3. 找到图片模式 composer 并输入提示词
+# 注入提示词（每张图重复此步骤）
 PROMPT_B64=$(echo -n "$PROMPT" | base64)
 curl -s -X POST "http://localhost:3456/eval?target=$TARGET" \
   -H "Content-Type: text/plain" \
@@ -498,53 +574,39 @@ document.execCommand('insertText',false,__b64d('$PROMPT_B64'));
 "
 sleep 1
 curl -s -X POST "http://localhost:3456/click?target=$TARGET" -d '.composer-submit-btn'
-# 等待生成（约 30s）
-sleep 35
+sleep 35  # 等待生成
+
+# 每张生成完后下载（见下方 download_chatgpt_image 函数）
 ```
 
-**Image 2 — 「日有所思」心得卡**
+### 下载保存（通用函数）
 
-⚠️ **此步骤必须暂停，等用户提供当日心得文字**：
-
-> 「请输入今日心得（日有所思）——1-3句话，放进卡片里。」
-
-收到用户输入后，用以下提示词生成：
-
-```
-A minimalist vertical card 9:16, calm and philosophical aesthetic.
-Soft warm gradient background (cream-ivory to light sage green).
-Handwritten-style Chinese text centered: 「日有所思」as the main title (bold, large),
-below it smaller text: 「{{USER_TEXT_FIRST_LINE}}」
-bottom area: full reflection text in smaller font: 「{{USER_FULL_TEXT}}」
-Clean white space, no decorative elements, elegant serif-like Chinese typography,
-subtle paper texture, muted warm tones.
-```
-
-### 下载保存
-
-图片生成完成后，用 CDP fetch + base64 解码保存（需在浏览器已登录 ChatGPT 的 tab 中执行，URL 含 `estuary` 字样）：
+图片生成完成后，URL 含 `estuary` 字样，需在已登录的 ChatGPT tab 内 fetch：
 
 ```python
 import subprocess, json, base64
 
 def download_chatgpt_image(target_id, out_path):
-    # 1. 获取图片 URL
-    r = subprocess.run(
-        ['curl','-s','-X','POST',f'http://localhost:3456/eval?target={target_id}',
-         '-H','Content-Type: text/plain',
-         '-d','JSON.stringify(Array.from(document.querySelectorAll("img[src*=estuary]")).map(i=>i.src)[0])'],
-        capture_output=True, text=True)
-    img_url = json.loads(r.stdout)['value'].strip('"')
-
-    # 2. 在浏览器内 fetch（带 cookie），分块读取 base64
-    fetch_js = f'fetch("{img_url}").then(r=>r.arrayBuffer()).then(buf=>{{var a=new Uint8Array(buf),b="",c=8192;for(var i=0;i<a.length;i+=c)b+=String.fromCharCode.apply(null,a.subarray(i,i+c));window.__imgb64=btoa(b);return window.__imgb64.length;}})'
+    """从 ChatGPT CDP tab 下载最新生成的图片到本地"""
+    # 1. 在浏览器内 fetch（带 cookie），转 base64 存到 window.__imgb64
+    fetch_js = '''
+    (async()=>{
+      var url=document.querySelector("img[src*=estuary]")?.src;
+      if(!url){return "no_img";}
+      var buf=await(await fetch(url)).arrayBuffer();
+      var a=new Uint8Array(buf),b="",c=8192;
+      for(var i=0;i<a.length;i+=c)b+=String.fromCharCode.apply(null,a.subarray(i,i+c));
+      window.__imgb64=btoa(b);
+      return window.__imgb64.length;
+    })()
+    '''
     subprocess.run(['curl','-s','-X','POST',f'http://localhost:3456/eval?target={target_id}',
                     '-H','Content-Type: text/plain','-d',fetch_js], capture_output=True)
 
-    # 3. 分块取出 base64 并解码
+    # 2. 分块取出 base64
     total = json.loads(subprocess.run(
         ['curl','-s','-X','POST',f'http://localhost:3456/eval?target={target_id}',
-         '-H','Content-Type: text/plain','-d','window.__imgb64.length'],
+         '-H','Content-Type: text/plain','-d','window.__imgb64?.length||0'],
         capture_output=True,text=True).stdout)['value']
     chunks, size = [], 500000
     for start in range(0, total, size):
@@ -553,9 +615,20 @@ def download_chatgpt_image(target_id, out_path):
              '-H','Content-Type: text/plain','-d',f'window.__imgb64.substring({start},{start+size})'],
             capture_output=True, text=True)
         chunks.append(json.loads(r.stdout)['value'])
+
     with open(out_path, 'wb') as f:
         f.write(base64.b64decode(''.join(chunks)))
-    print(f"Saved {out_path} ({total} b64 chars)")
+    print(f"✓ Saved {out_path} ({total//1000}KB b64)")
+
+# 使用示例
+DATE = "2026-05-14"
+VAULT = "/Users/admin/Documents/Obsidian Vault"
+BASE = f"{VAULT}/09_System/Automation/results/{DATE}"
+
+download_chatgpt_image(TARGET, f"{BASE}/img_cover.png")
+download_chatgpt_image(TARGET, f"{BASE}/img_card1.png")
+download_chatgpt_image(TARGET, f"{BASE}/img_card2.png")
+download_chatgpt_image(TARGET, f"{BASE}/img_reflection.png")
 ```
 
 ---
