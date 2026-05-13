@@ -10,6 +10,24 @@ description: >-
 
 # AI Daily — 每日 AI 日报
 
+## 快速配置（换机必读）
+
+首次使用前，在 shell 配置文件（`~/.zshrc` 或 `~/.bashrc`）中添加：
+
+```bash
+export OBSIDIAN_VAULT="/path/to/your/Obsidian Vault"   # 改成你的 Vault 根目录
+```
+
+然后 `source ~/.zshrc` 生效。  
+Skill 读取的路径由 `$OBSIDIAN_VAULT` 驱动；不设则 fallback 到 `/Users/admin/Documents/Obsidian Vault`（原机默认值）。
+
+| 变量 | 说明 | 示例 |
+|------|------|------|
+| `OBSIDIAN_VAULT` | Obsidian 库根目录 | `/Users/yourname/Documents/Obsidian Vault` |
+| `CLAUDE_SKILL_DIR` | Skill 安装目录（Claude Code 自动注入，一般无需手动设置） | `~/.claude/skills/ai-daily` |
+
+---
+
 ## 核心原则
 
 1. **素材来自真实源头** — 主源是 Daily Note（resource-morning OKR 精选）；aihot 为辅助补充；禁止凭记忆构造新闻
@@ -25,7 +43,7 @@ description: >-
 每次生成前，先确保创作者素材库是最新的（24小时内自动跳过重复抓取）：
 
 ```bash
-SKILL_DIR="/Users/admin/.claude/skills/ai-daily"
+SKILL_DIR="${CLAUDE_SKILL_DIR:-$HOME/.claude/skills/ai-daily}"
 python3 "$SKILL_DIR/scripts/feed-update.py"
 ```
 
@@ -86,7 +104,8 @@ resource-morning Master Agent 每天早上自动运行，产出 `03_Resources/_M
 ```bash
 DATE=$(date +%Y-%m-%d)
 YM=$(date +%Y-%m)
-DIGEST="/Users/admin/Documents/Obsidian Vault/03_Resources/_Morning/${YM}/${DATE}-Digest.md"
+VAULT="${OBSIDIAN_VAULT:-/Users/admin/Documents/Obsidian Vault}"
+DIGEST="${VAULT}/03_Resources/_Morning/${YM}/${DATE}-Digest.md"
 if [ -f "$DIGEST" ]; then
     # 读取 PART 1（AI 圈大事）+ PART 2 摘要即可，不需要全文
     python3 -c "
@@ -350,9 +369,10 @@ curl -sL \
 ### 层 1：格式校验
 
 ```bash
-SKILL_DIR="/Users/admin/.claude/skills/ai-daily"
+SKILL_DIR="${CLAUDE_SKILL_DIR:-$HOME/.claude/skills/ai-daily}"
 DATE=$(date +%Y-%m-%d)
-OUTPUT="/Users/admin/Documents/Obsidian Vault/09_System/Automation/results/${DATE}/06_ai_daily.md"
+VAULT="${OBSIDIAN_VAULT:-/Users/admin/Documents/Obsidian Vault}"
+OUTPUT="${VAULT}/09_System/Automation/results/${DATE}/06_ai_daily.md"
 python3 "$SKILL_DIR/scripts/validate.py" "$OUTPUT"
 ```
 
@@ -382,7 +402,8 @@ FAIL → 重新跑 S3.0 标题竞选，选更高分的候选，替换后重新�
 
 ```bash
 DATE=$(date +%Y-%m-%d)
-OUTPUT="/Users/admin/Documents/Obsidian Vault/09_System/Automation/results/${DATE}/06_ai_daily.md"
+VAULT="${OBSIDIAN_VAULT:-/Users/admin/Documents/Obsidian Vault}"
+OUTPUT="${VAULT}/09_System/Automation/results/${DATE}/06_ai_daily.md"
 ```
 
 文件格式：
@@ -412,7 +433,7 @@ sources: aihot,morning_brief
 存档后，追加运行记录到知识库：
 
 ```bash
-SKILL_DIR="/Users/admin/.claude/skills/ai-daily"
+SKILL_DIR="${CLAUDE_SKILL_DIR:-$HOME/.claude/skills/ai-daily}"
 python3 "$SKILL_DIR/scripts/archive.py" "$OUTPUT"
 
 # 如果用户提供了编辑后的版本（用于记录修改信号）：

@@ -75,12 +75,36 @@ S4  存档（archive.py，每7次触发蒸馏提示）
 | 花叔 | 公众号 + XHS | 毒舌类比，视觉化表达 |
 | 刘小排 | 公众号 + XHS | 极端对比，立场鲜明 |
 
-## 使用前提
+## 安装 & 配置
+
+### 1. 克隆到 Claude Code skills 目录
+
+```bash
+git clone https://github.com/zebinwang-code/ai-daily ~/.claude/skills/ai-daily
+```
+
+### 2. 设置 Obsidian Vault 路径
+
+在 `~/.zshrc`（或 `~/.bashrc`）中添加：
+
+```bash
+export OBSIDIAN_VAULT="/path/to/your/Obsidian Vault"
+```
+
+然后 `source ~/.zshrc`。Skill 所有路径都从这个变量派生，换机只需改这一处。
+
+### 3. 前提条件
 
 - Claude Code CLI
-- Python 3.8+（scripts 目录）
-- CDP Proxy（XHS 抓取需要，`localhost:3456`）
-- `references/creator-config.json` 中填入创作者 XHS user ID
+- Python 3.8+
+- CDP Proxy（XHS 创作者素材抓取需要，`localhost:3456`；不需要 XHS 功能可跳过）
+
+### 路径说明
+
+| 用途 | 路径 |
+|------|------|
+| 主数据源 | `$OBSIDIAN_VAULT/03_Resources/_Morning/YYYY-MM/YYYY-MM-DD-Digest.md` |
+| 日报输出 | `$OBSIDIAN_VAULT/09_System/Automation/results/YYYY-MM-DD/06_ai_daily.md` |
 
 ## 架构模式
 
