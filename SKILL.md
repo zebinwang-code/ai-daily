@@ -307,7 +307,8 @@ curl -sL \
 
 **格式规范：**
 - 每条推文独立可传播，不依赖上下文
-- Emoji 最多 1 个/推文，只放开头功能性位置
+- **三个 Emoji 固定锁定：📅（Tweet1）、🔧（Tweet2）、💡（Tweet3）——不可替换**
+- Emoji 只放行首，不重复出现
 - 话题标签放最后：`#AI` `#AIDaily`（不超过 2 个）
 - 每条字数：中文≤140字，英文≤280字符
 
@@ -445,7 +446,248 @@ archive.py 会：
 - 追加一条运行记录到 `references/knowledge-base.md`
 - 每 7 次运行后输出蒸馏提示，指引更新 platform-voices.md
 
-存档后直接展示三版给用户。发布：公众号版走 content-harness 发布流程；X/小红书版手动复制。
+存档后直接展示三版给用户，并继续执行 S5（配图生成）→ S6（多平台发布）。
+
+---
+
+## S5：配图生成（ChatGPT CDP）
+
+每次日报生成两张竖版图（9:16），存入当日结果目录：
+- `img_daily.png` — 今日 AI 资讯信息图，结合当日内容
+- `img_reflection.png` — 「日有所思」心得卡片，**内容需要暂停等用户输入**
+
+### 流程
+
+```bash
+# 1. 打开 ChatGPT，进入图片生成模式
+TARGET=$(curl -s "http://localhost:3456/new?url=https://chatgpt.com" \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['targetId'])")
+sleep 3
+
+# 2. 点击「生成图片」入口按钮（UI 位于左侧边栏或工具栏）
+curl -s -X POST "http://localhost:3456/eval?target=$TARGET" \
+  -H "Content-Type: text/plain" \
+  -d 'document.querySelector("[data-testid=\"gizmo-selector-button-dalle\"]")?.click() || document.querySelector("button[aria-label*=\"图\"]")?.click()'
+sleep 2
+```
+
+**Image 1 — 资讯信息图**
+
+提示词模板（将 `{{TITLE}}` `{{EVENTS}}` 替换为当日实际内容）：
+
+```
+modern flat infographic, minimalist, vertical poster 9:16, soft pastel gradient background
+(blue-purple-peach), tech newsletter style, futuristic, abstract icons and circular motifs,
+floating shapes, semi-transparent layers, smooth gradients, clean hierarchical layout,
+bold Chinese headline, light shadows and highlights, thematic symbols placeholder.
+Include text: main title「AI 圈 · MM月DD日」, subtitle「{{TITLE}}」,
+3 content cards: {{EVENT1}} / {{EVENT2}} / {{EVENT3}}
+```
+
+```bash
+# 3. 找到图片模式 composer 并输入提示词
+PROMPT_B64=$(echo -n "$PROMPT" | base64)
+curl -s -X POST "http://localhost:3456/eval?target=$TARGET" \
+  -H "Content-Type: text/plain" \
+  -d "
+var __b64d=function(s){var b=atob(s),ar=new Uint8Array(b.length);for(var i=0;i<b.length;i++)ar[i]=b.charCodeAt(i);return new TextDecoder('utf-8').decode(ar);};
+var box=document.querySelector('p[data-placeholder=\"描述或编辑图片\"]') || document.querySelector('[contenteditable=\"true\"]');
+box.focus();
+document.execCommand('insertText',false,__b64d('$PROMPT_B64'));
+'done'
+"
+sleep 1
+curl -s -X POST "http://localhost:3456/click?target=$TARGET" -d '.composer-submit-btn'
+# 等待生成（约 30s）
+sleep 35
+```
+
+**Image 2 — 「日有所思」心得卡**
+
+⚠️ **此步骤必须暂停，等用户提供当日心得文字**：
+
+> 「请输入今日心得（日有所思）——1-3句话，放进卡片里。」
+
+收到用户输入后，用以下提示词生成：
+
+```
+A minimalist vertical card 9:16, calm and philosophical aesthetic.
+Soft warm gradient background (cream-ivory to light sage green).
+Handwritten-style Chinese text centered: 「日有所思」as the main title (bold, large),
+below it smaller text: 「{{USER_TEXT_FIRST_LINE}}」
+bottom area: full reflection text in smaller font: 「{{USER_FULL_TEXT}}」
+Clean white space, no decorative elements, elegant serif-like Chinese typography,
+subtle paper texture, muted warm tones.
+```
+
+### 下载保存
+
+图片生成完成后，用 CDP fetch + base64 解码保存（需在浏览器已登录 ChatGPT 的 tab 中执行，URL 含 `estuary` 字样）：
+
+```python
+import subprocess, json, base64
+
+def download_chatgpt_image(target_id, out_path):
+    # 1. 获取图片 URL
+    r = subprocess.run(
+        ['curl','-s','-X','POST',f'http://localhost:3456/eval?target={target_id}',
+         '-H','Content-Type: text/plain',
+         '-d','JSON.stringify(Array.from(document.querySelectorAll("img[src*=estuary]")).map(i=>i.src)[0])'],
+        capture_output=True, text=True)
+    img_url = json.loads(r.stdout)['value'].strip('"')
+
+    # 2. 在浏览器内 fetch（带 cookie），分块读取 base64
+    fetch_js = f'fetch("{img_url}").then(r=>r.arrayBuffer()).then(buf=>{{var a=new Uint8Array(buf),b="",c=8192;for(var i=0;i<a.length;i+=c)b+=String.fromCharCode.apply(null,a.subarray(i,i+c));window.__imgb64=btoa(b);return window.__imgb64.length;}})'
+    subprocess.run(['curl','-s','-X','POST',f'http://localhost:3456/eval?target={target_id}',
+                    '-H','Content-Type: text/plain','-d',fetch_js], capture_output=True)
+
+    # 3. 分块取出 base64 并解码
+    total = json.loads(subprocess.run(
+        ['curl','-s','-X','POST',f'http://localhost:3456/eval?target={target_id}',
+         '-H','Content-Type: text/plain','-d','window.__imgb64.length'],
+        capture_output=True,text=True).stdout)['value']
+    chunks, size = [], 500000
+    for start in range(0, total, size):
+        r = subprocess.run(
+            ['curl','-s','-X','POST',f'http://localhost:3456/eval?target={target_id}',
+             '-H','Content-Type: text/plain','-d',f'window.__imgb64.substring({start},{start+size})'],
+            capture_output=True, text=True)
+        chunks.append(json.loads(r.stdout)['value'])
+    with open(out_path, 'wb') as f:
+        f.write(base64.b64decode(''.join(chunks)))
+    print(f"Saved {out_path} ({total} b64 chars)")
+```
+
+---
+
+## S6：多平台发布
+
+三版内容 + 两张图就绪后，依次发布。公众号走 content-harness；X / 小红书用 CDP。
+
+### S6.1 公众号发布
+
+调用 content-harness skill（已有完整 CDP 流程，含 filetransfer 上传封面 + operate_appmsg API 写正文）：
+
+```
+/content-harness --platform wechat --content $OUTPUT --cover img_daily.png
+```
+
+关键经验（详见 `web-access/references/site-patterns/mp.weixin.qq.com.md`）：
+- base64 解码函数命名用 `__b64d`，不能用 `dec`（WeChat 保留变量）
+- curl 发 JS 时加 `-H "Content-Type: text/plain"` 保留 `+` 字符
+- 注入正文后需再单独 eval 一次设置标题（Vue 会把第一段文字同步到 title 框）
+
+### S6.2 X（Twitter）发布
+
+```bash
+# 1. 打开 compose 窗口
+TARGET_X=$(curl -s "http://localhost:3456/new?url=https://x.com/compose/post" \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['targetId'])")
+sleep 3
+
+# 2. 注入 Tweet 1（通过 execCommand insertText，不用 value setter）
+TWEET1_B64=$(echo -n "$TWEET1" | base64)
+curl -s -X POST "http://localhost:3456/eval?target=$TARGET_X" \
+  -H "Content-Type: text/plain" \
+  -d "
+var __b64d=function(s){var b=atob(s),ar=new Uint8Array(b.length);for(var i=0;i<b.length;i++)ar[i]=b.charCodeAt(i);return new TextDecoder('utf-8').decode(ar);};
+var box=document.querySelector('[data-testid=\"tweetTextarea_0\"]');
+box.focus(); document.execCommand('insertText',false,__b64d('$TWEET1_B64')); 'done'
+"
+
+# 3. 注入 Tweet 2（第二个 tweetTextarea_0 实例 = 线程续帖框）
+TWEET2_B64=$(echo -n "$TWEET2" | base64)
+curl -s -X POST "http://localhost:3456/eval?target=$TARGET_X" \
+  -H "Content-Type: text/plain" \
+  -d "
+var __b64d=function(s){var b=atob(s),ar=new Uint8Array(b.length);for(var i=0;i<b.length;i++)ar[i]=b.charCodeAt(i);return new TextDecoder('utf-8').decode(ar);};
+var boxes=document.querySelectorAll('[data-testid=\"tweetTextarea_0\"]');
+var box=boxes[boxes.length-1]; box.focus();
+document.execCommand('insertText',false,__b64d('$TWEET2_B64')); 'done'
+"
+sleep 1
+
+# 4. 点 addButton 添加 Tweet 3 槽位
+curl -s -X POST "http://localhost:3456/click?target=$TARGET_X" -d '[data-testid="addButton"]'
+sleep 1
+
+# 5. 注入 Tweet 3（同上，取最后一个 textarea）
+TWEET3_B64=$(echo -n "$TWEET3" | base64)
+curl -s -X POST "http://localhost:3456/eval?target=$TARGET_X" \
+  -H "Content-Type: text/plain" \
+  -d "
+var __b64d=function(s){var b=atob(s),ar=new Uint8Array(b.length);for(var i=0;i<b.length;i++)ar[i]=b.charCodeAt(i);return new TextDecoder('utf-8').decode(ar);};
+var boxes=document.querySelectorAll('[data-testid=\"tweetTextarea_0\"]');
+boxes[boxes.length-1].focus();
+document.execCommand('insertText',false,__b64d('$TWEET3_B64')); 'done'
+"
+
+# 6. 发布
+curl -s -X POST "http://localhost:3456/click?target=$TARGET_X" -d '[data-testid="tweetButton"]'
+sleep 3
+curl -s "http://localhost:3456/close?target=$TARGET_X"
+```
+
+**已知陷阱（2026-05-13 验证）：**
+- X 的 hashtag 自动补全下拉框不影响提交，直接点 Post 即可
+- 线程续帖框与 tweet1 框同名（均为 `tweetTextarea_0`），用 `querySelectorAll(...)[last]` 取最后一个
+- 账号若处于只读模式（刚注册/被限制）会报 "Your account may not be allowed to perform this action"，需人工处理
+- 不支持在 compose 弹窗内直接上传图片到线程（图片发布建议人工操作）
+
+### S6.3 小红书发布
+
+```bash
+# 1. 打开创作者中心
+TARGET_XHS=$(curl -s "http://localhost:3456/new?url=https://creator.xiaohongshu.com/publish/publish" \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['targetId'])")
+sleep 4
+
+# 2. 点击「上传图片」，选择封面图
+curl -s -X POST "http://localhost:3456/setFiles?target=$TARGET_XHS" \
+  -H "Content-Type: application/json" \
+  -d "{\"selector\":\"input[type=file]\",\"files\":[\"$IMG_DAILY_PATH\"]}"
+sleep 3
+
+# 3. 注入标题
+TITLE_B64=$(echo -n "$XHS_TITLE" | base64)
+curl -s -X POST "http://localhost:3456/eval?target=$TARGET_XHS" \
+  -H "Content-Type: text/plain" \
+  -d "
+var __b64d=function(s){var b=atob(s),ar=new Uint8Array(b.length);for(var i=0;i<b.length;i++)ar[i]=b.charCodeAt(i);return new TextDecoder('utf-8').decode(ar);};
+var titleBox=document.querySelector('.titleInput') || document.querySelector('input[placeholder*=\"标题\"]');
+var s=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;
+s.call(titleBox,__b64d('$TITLE_B64'));
+titleBox.dispatchEvent(new Event('input',{bubbles:true}));
+'done'
+"
+
+# 4. 注入正文
+BODY_B64=$(echo -n "$XHS_BODY" | base64)
+curl -s -X POST "http://localhost:3456/eval?target=$TARGET_XHS" \
+  -H "Content-Type: text/plain" \
+  -d "
+var __b64d=function(s){var b=atob(s),ar=new Uint8Array(b.length);for(var i=0;i<b.length;i++)ar[i]=b.charCodeAt(i);return new TextDecoder('utf-8').decode(ar);};
+var ed=document.querySelector('.ql-editor') || document.querySelector('[contenteditable=true]');
+ed.focus();
+document.execCommand('insertText',false,__b64d('$BODY_B64'));
+'done'
+"
+
+# 5. 添加话题标签（点击「#话题」按钮后 eval 注入）
+# 建议手动添加以避免话题搜索触发反爬
+
+# 6. 发布
+curl -s -X POST "http://localhost:3456/click?target=$TARGET_XHS" -d '.publishBtn'
+sleep 3
+curl -s "http://localhost:3456/close?target=$TARGET_XHS"
+```
+
+**已知陷阱（2026-05-13 经验）：**
+- 创作者中心需已登录状态（用户日常 Chrome 天然携带）
+- 图片上传后有处理时间（约 2-3s），需 sleep 后再填文字
+- XHS 编辑器可能是 Quill（`.ql-editor`）或自定义 contenteditable，截图确认后选择
+- 话题标签（#AI日报等）自动补全会触发网络请求，建议最后手动点选
+- 封面图建议用 img_daily.png（信息图），比文字截图更吸引点击
 
 ---
 
