@@ -1,0 +1,65 @@
+{
+  "_note": "xhs_user_id：从创作者小红书主页 URL 获取，格式 xiaohongshu.com/user/profile/{ID}。留空则跳过 XHS 抓取。",
+  "creators": [
+    {
+      "name": "歸藏",
+      "wechat_name": "歸藏(guizang.ai)",
+      "sogou_query": "歸藏 AI工具",
+      "xhs_user_id": "5c696b98000000001003043b",
+      "platforms": ["wechat", "xhs"],
+      "focus": "工具/产品层快讯，功能+判断同时给出，两句内完成定位",
+      "style_note": "公众号标杆：开头公式=功能+判断同时，无背景铺垫；结尾=实用推荐不升华",
+      "relevance_keywords": ["AI", "Claude", "GPT", "模型", "工具", "产品"]
+    },
+    {
+      "name": "宝玉xp",
+      "wechat_name": "宝玉xp",
+      "sogou_query": "宝玉xp AI",
+      "xhs_user_id": "",
+      "platforms": ["wechat"],
+      "focus": "模型/研究层解读，事件+一句含义层，克制选题",
+      "style_note": "公众号标杆：每个技术细节后跟「这意味着什么」；克制本身是信任建立",
+      "relevance_keywords": ["AI", "Claude", "GPT", "模型", "提示词", "prompt"]
+    },
+    {
+      "name": "赛博禅心",
+      "wechat_name": "赛博禅心",
+      "sogou_query": "赛博禅心 AI",
+      "xhs_user_id": "5b6bee5a6b58b7037ebad058",
+      "platforms": ["wechat", "xhs"],
+      "focus": "安静洞察+第一人称真实感，不催焦虑，邀请进入思考空间",
+      "style_note": "小红书标杆：开头生活场景切入，段落2-4句留白，不强制下结论",
+      "relevance_keywords": ["AI", "Claude", "工具", "今天", "测了", "发现"]
+    },
+    {
+      "name": "卡兹克",
+      "wechat_name": "卡兹克",
+      "sogou_query": "卡兹克 AI 模型",
+      "xhs_user_id": "62c98736000000001501e075",
+      "platforms": ["wechat", "xhs"],
+      "focus": "具体数据+游戏化叙事，克制用词，不用无法被数据支撑的形容词",
+      "style_note": "公众号标杆：每条必有具体数字，像在说一局游戏的战况而非新闻通稿",
+      "relevance_keywords": ["AI", "模型", "Claude", "GPT", "参数", "tokens"]
+    },
+    {
+      "name": "花叔",
+      "wechat_name": "花叔Design",
+      "sogou_query": "花叔Design AI",
+      "xhs_user_id": "5abc6f17e8ac2b109179dfdf",
+      "platforms": ["wechat", "xhs"],
+      "focus": "毒舌类比，用一个意外类比一句话击中，视觉化表达",
+      "style_note": "灵感一闪标杆：「办了健身卡然后带18个朋友去洗澡」式精准类比",
+      "relevance_keywords": ["AI", "Claude", "设计", "PPT", "工具", "图像"]
+    },
+    {
+      "name": "刘小排",
+      "wechat_name": "刘小排",
+      "sogou_query": "刘小排 AI",
+      "xhs_user_id": "6982bd6d000000002102ed3c",
+      "platforms": ["wechat", "xhs"],
+      "focus": "极端对比视角，不做中立评价，立场鲜明",
+      "style_note": "公众号：标题和立场都是极端对比，从不说「各有优劣」",
+      "relevance_keywords": ["AI", "Claude", "编程", "产品", "Agent"]
+    }
+  ]
+}
